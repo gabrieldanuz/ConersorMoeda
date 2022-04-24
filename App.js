@@ -1,47 +1,106 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity } from 'react-native';
+import React, {useEffect, useState} from 'react';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Keyboard } from 'react-native';
 
 import Picker from './src/components/Picker';
+import api from './src/services/api';
 
 export default function App() {
-  return (
-    <View style={styles.container}>
+  const [moedas, setMoedas] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-      <View style={styles.areaMoeda}>
-        <Text style={styles.titulo}>
-          Selecione sua Moeda
-          </Text>
-          <Picker />
-      </View>
+  const [moedaSelecionada, setMoeadaSelecionada] = useState(null);
+  const [moedaBValor, setMoedaBValor] = useState(0);
 
-      <View style={styles.areaValor}>
-          <Text style={styles.titulo}>
-          Digite um valor para converter em (R$)
-          </Text>
-          <TextInput 
-          style={styles.input}
-          placeholder="Ex: 150"
-          keyboardType='numeric'
-          />
-      </View>
+  const  [valorMoeda, setValorMoeda] = useState(null);
+  const [valorConvertido, setValorConvertido] = useState(0);
 
-        <TouchableOpacity style={styles.botaoArea}>
-          <Text style={styles.botaoTexto}>Converter</Text>
-        </TouchableOpacity>
+  useEffect(() => {
+    async function loadMoedas(){
+      const response = await api.get('all')
+      
+      let arrayMoedas = []
+      Object.keys(response.data).map((key) => {
+        arrayMoedas.push({
+          key: key,
+          label: key,
+          value: key
+        })
+      })
 
-      <View style={styles.areaResultado}>
-        <Text style={styles.valorConvertido}>
-          3 USD
-        </Text>
-        <Text style={[styles.valorConvertido, {fontSize: 18, margin: 10}]}>
-          Corresponde a
-        </Text>
-        <Text style={styles.valorConvertido}>
-          19,90
-        </Text>
-      </View>
+      setMoedas(arrayMoedas);
+      setLoading(false);
+    }
+
+    loadMoedas();
+  }, []);
+
+  async function converter(){
+    if(moedaSelecionada === null || moedaBValor === 0) {
+      alert('Por favor selecione uma moeda');
+      return;
+    }
+
+    const response = await api.get(`all/${moedaSelecionada}-BRL`);
+    //console.log(response.data[moedaSelecionada].ask);
+
+    let resultado = (response.data[moedaSelecionada].ask * parseFloat(moedaBValor) );
+    setValorConvertido(`R$ ${resultado.toFixed(2)}`)
+    setValorMoeda(moedaBValor);
+
+    Keyboard.dismiss();
+  }
+
+  if(loading) {
+    return(
+      <View style={{justifyContent: 'center', alignItems: 'center', flex: 1}}>
+      <ActivityIndicator color="#FFF" size={45}/>
     </View>
-  );
+    )
+  }else{
+    return (
+      <View style={styles.container}>
+  
+        <View style={styles.areaMoeda}>
+          <Text style={styles.titulo}>
+            Selecione sua Moeda
+            </Text>
+            <Picker moedas={moedas} onChange={(moeda) => setMoeadaSelecionada(moeda)}/>
+        </View>
+  
+        <View style={styles.areaValor}>
+            <Text style={styles.titulo}>
+            Digite um valor para converter em (R$)
+            </Text>
+            <TextInput 
+            style={styles.input}
+            placeholder="Ex: 150"
+            keyboardType='numeric'
+            onChangeText={(valor) => setMoedaBValor(valor)}
+            />
+        </View>
+  
+          <TouchableOpacity style={styles.botaoArea} 
+          onPress={converter}
+          >
+            <Text style={styles.botaoTexto}>Converter</Text>
+          </TouchableOpacity>
+  
+       {valorConvertido !== 0 && (
+          <View style={styles.areaResultado}>
+          <Text style={styles.valorConvertido}>
+            {valorMoeda} {moedaSelecionada}
+          </Text>
+          <Text style={[styles.valorConvertido, {fontSize: 18, margin: 10}]}>
+            Corresponde a
+          </Text>
+          <Text style={styles.valorConvertido}>
+            {valorConvertido}
+          </Text>
+        </View>
+      )}
+      </View>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
